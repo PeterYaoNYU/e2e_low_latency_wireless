@@ -365,3 +365,5 @@ Bring up the flexric:
 cd /mydata/flexric/  
 ./build/examples/ric/nearRT-RIC
 ```
+
+We have prepared a separate [jupyter notebook](./l4s_setup.ipynb) that talks about how to do L4S setup and installation. 
