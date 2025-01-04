@@ -46,12 +46,12 @@ sudo apt-get install -y libpcre2-dev
 ```
 
 ## OpenAirInterface & FlexRIC Installation
-We use a slighlty modified version of OpenAirInterface that has slicing enabled and a smaller RLC buffer size (2MB) than the default for better latency in general, available at this [Repository](https://github.com/PeterYaoNYU/OAI_Modified). You may clone it. 
+We use a slighlty modified version of OpenAirInterface that has slicing enabled and a smaller RLC buffer size (2MB) than the default for better latency in general, available at this [Repository](https://github.com/PeterYaoNYU/OAI_Modified). You may clone it. Also, we use a slightly modified flexric that enforeces fair slicing. Check git log for information of what changes we make. It is less than 100 LoC.  
 
 ```bash
 # you are at /mydata
 cd /mydata
-git clone https://gitlab.eurecom.fr/mosaic5g/flexric.git
+git clone https://github.com/PeterYaoNYU/modified-flexric.git
 cd flexric/
 git checkout rc_slice_xapp
 
@@ -366,4 +366,8 @@ cd /mydata/flexric/
 ./build/examples/ric/nearRT-RIC
 ```
 
-We have prepared a separate [jupyter notebook](./l4s_setup.ipynb) that talks about how to do L4S setup and installation. 
+## Install L4S
+
+We have prepared a separate [jupyter notebook](./l4s_setup.ipynb) that talks about how to do L4S setup and installation. To install L4S on all necessary nodes, just execute the whole notebook. 
+
+> the first code block needs to be setup using your own POWDER SSH connection. Nothing else needs to be customized.  

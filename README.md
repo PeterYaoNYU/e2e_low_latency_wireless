@@ -3,7 +3,7 @@ This is the Reproducibility Guide for INFOCOM NG-OPERA Submission ***Achieving E
 
 This guide include the following sections:
 1. How to get resources on Powder. 
-2. How to set up the network. 
-3. How to Configure the network. 
-4. How to run an experiment. 
+2. How to set up the network. (Software installation and initiation)
+3. How to Configure the network. (Slicing, different routes, queue discipline configuration)
+4. How to run an experiment.
 5. How to analyze the experiment data. 
