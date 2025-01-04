@@ -61,6 +61,8 @@ sudo sysctl -w net.ipv6.conf.all.seg6_enabled=1
 sudo sysctl -w net.ipv6.conf.{prage_dualq_interface}.seg6_enabled=1
 sudo sysctl -w net.ipv6.conf.{prague_FIFO_interface}.seg6_enabled=1
 sudo sysctl -w net.ipv6.conf.{classis_FIFO_interface}.seg6_enabled=1
+sudo sysctl -w net.ipv6.conf.{FIFO_5G_interface}.seg6_enabled=1
+sudo sysctl -w net.ipv6.conf.{dualq_5G_interface}.seg6_enabled=1
 ```
 
 On the L4S Sender node:
