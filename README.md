@@ -5,5 +5,5 @@ This guide include the following sections:
 1. How to [get resources](./get_resources.md) on Powder. 
 2. How to [set up the network](./setup_network.md). (Software installation and initiation)
 3. How to [Configure the network](./conf_network.md). (Slicing, different routes, queue discipline configuration)
-4. How to run an experiment.
+4. How to [run an experiment](./experiment_run.md).
 5. How to analyze the experiment data. 

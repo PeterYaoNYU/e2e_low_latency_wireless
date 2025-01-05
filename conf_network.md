@@ -12,11 +12,11 @@ To go back to no slicing, kill the gnb and start afresh. You may need to refer b
 
 ## Queue Discipline
 
-We have a separate [jupyter notebook](./qdisc.ipynb) that walks you through the process, again, the first code block, the SSH connection, need to be modified by you. 
+We have a separate [jupyter notebook](./qdisc_cca.ipynb) that walks you through the process, again, the first code block, the SSH connection, need to be modified by you. 
 
 Follow the prompts in the notebook to execute specific code blocks dependeing on the experiment. 
 
-## Shared Queue v.s.Separate Queue
+## Shared Queue v.s. Separate Queue
 
 We start with separate queue, whether you use static routing or SRv6 for routing. 
 
@@ -72,3 +72,7 @@ sudo sysctl -w net.ipv6.conf.{FIFO_5G_interface}.seg6_enabled=1
 sudo sysctl -w net.ipv6.conf.{dualq_5G_interface}.seg6_enabled=1
 ```
 
+## Configure the Congestion Control
+After you intiate the UE each time, you need to make sure that the UEs are using the correct congestion control algorithms intended. You also need to make sure that the sender and cross traffic receiver is using the correct congestion control. 
+
+To simplify the process, we have a ***CCA*** section in the [jupyter notebook](./qdisc_cca.ipynb), where you just need to execute the code blocks to set up the CCA in the UEs, the senders, and the cross traffic receivers. 
