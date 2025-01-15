@@ -6,10 +6,17 @@ To analyze the latency, we first transform the data into a summary of CSV files,
 An example would be:
 ```bash
 python3 .\ss_csv.py {begin_idx} {end_idx} {csv_prefix}
-python3 .\rtt_plot.py {csv_prefix}
+python3 .\rtt_plot.py {csv_prefix} {comment for the plot} <--no-lewgend>
 ```
 
+
+
 Where {csv_prefix} is a string of your choice. 
+
+An example could be:
+```
+python3 .\rtt_plot.py story4 "RAN Bottleneck" --no-legend
+```
 
 ## Throughput
 
@@ -17,7 +24,13 @@ It follows the same process as the latency data. First a CSV summary, then we pl
 
 ```bash
 python3 .\iperf_csv.py {begin_idx} {end_idx} {csv_prefix}
-python3 .\thp_plot.py {csv_prefix}
+python3 .\thp_plot.py {csv_prefix} {yes/no for additional y axis space} {comment for the plot}
+```
+
+An example might be:
+```
+python3 .\thp_plot.py story2 no "No Flow Isolation"
+python3 .\thp_plot.py story4 yes "RAN Bottleneck"
 ```
 
 ## RLC Queue

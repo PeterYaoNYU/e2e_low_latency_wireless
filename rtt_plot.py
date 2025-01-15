@@ -6,6 +6,7 @@ import re
 import os
 import matplotlib.pyplot as plt
 
+
 def get_ue_type(filename):
     """
     Based on the filename, return one of:
@@ -31,7 +32,8 @@ def get_ue_type(filename):
         return "cubic3"
     return "unknown"
 
-def main(prefix):
+
+def main(prefix, bottom_text, include_legend=True):
     """
     1) Reads {prefix}_srtt_results.csv, which has columns:
          idx, file, flow, mean_srtt
@@ -53,7 +55,7 @@ def main(prefix):
         sys.exit(1)
 
     # Convert mean_srtt to float
-    # We'll store each row in a list of (idx, ue_type, flow, srtt)
+    # We'll store each row in a list of (idx, file, ue_type, flow, srtt)
     data = []
     for r in rows:
         idx_val = r["idx"]
@@ -72,7 +74,6 @@ def main(prefix):
     # We gather data for 5 categories: prague, all_cubic, cubic1,2,3.
     # We compute mean & stdev across *all idx* in the CSV for each category.
     # ---------------------------------------------------------------------
-    # We'll gather srtts in a dict:  ue_agg[ue_type] -> list_of_srtts
     ue_agg = {
         "prague": [],
         "all_cubic": [],
@@ -84,11 +85,9 @@ def main(prefix):
     for (idxv, filev, uet, flowv, srttv) in data:
         if flowv == "ALL_FLOWS":
             # aggregator line
-            # if this ue_type is one of the keys, store the srtt
             if uet in ue_agg:
                 ue_agg[uet].append(srttv)
 
-    # Now compute mean & std for each in the order: prague, all_cubic, cubic1,2,3
     def mean_std(vals):
         if not vals:
             return (0.0, 0.0, 0)
@@ -96,48 +95,101 @@ def main(prefix):
             return (vals[0], 0.0, 1)
         return (statistics.mean(vals), statistics.pstdev(vals), len(vals))
 
-    bars_order = ["prague", "all_cubic", "cubic1", "cubic2", "cubic3"]
+    bars_order = ["prague", "all_cubic"]
     results1 = []
+    label_map = {
+        "prague": "Low Latency",
+        "all_cubic": "Non-low Latency",
+    }
     for cat in bars_order:
         mu, sd, n = mean_std(ue_agg[cat])
         # store (category_label, mean, std)
-        # rename 'all_cubic' to 'Cubic All' as a label
-        label_map = {
-            "prague": "Prague",
-            "all_cubic": "Cubic All",
-            "cubic1": "Cubic1",
-            "cubic2": "Cubic2",
-            "cubic3": "Cubic3",
-        }
         results1.append((label_map[cat], mu, sd))
 
-    # Make the bar plot
-    fig1, ax1 = plt.subplots(figsize=(8,4))
+    # Parse multi-run.csv for relevant story id
+    story_id = None
+    m = re.search(r'story(\d+)', prefix.lower())
+    if m:
+        story_id = m.group(1)
+    print("Story ID:", story_id, type(story_id))
+
+    base_delay = rlc_delay = upstream_latency = None
+    if story_id is not None:
+        try:
+            with open('multi-run.csv', 'r') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row["Story ID"].strip() == story_id:
+                        base_delay = float(row["RAN Base delay"].strip())
+                        # Sometimes the header might be "Delay RLC " (with trailing space)
+                        rlc_header = "Delay RLC " if "Delay RLC " in row else "Delay RLC"
+                        rlc_delay = float(row[rlc_header].strip())
+                        upstream_latency = float(row["Latency @ upstream Q"].strip())
+                        break
+        except Exception as e:
+            print("Error reading multi-run.csv:", e)
+
+    # Make the bar plot #1
+    fig1, ax1 = plt.subplots(figsize=(4, 3))  # Smaller figure
     xvals = range(len(results1))
     labels1 = [r[0] for r in results1]
     means1 = [r[1] for r in results1]
     stds1 = [r[2] for r in results1]
 
-    ax1.bar(
-        xvals, means1, yerr=stds1,
-        color="mediumseagreen",
-        ecolor="black", capsize=5, alpha=0.8
-    )
+    # Define shades of green for the stacked segments
+    base_color = plt.cm.Greens(0.6)      # Darker green for RAN Base delay
+    rlc_color = plt.cm.Greens(0.4)       # Medium green for Delay RLC
+    upstream_color = plt.cm.Greens(0.2)  # Lighter green for Latency @ upstream Q
+
+    # Plot the "Low Latency" bar (x=0)
+    if base_delay is not None and rlc_delay is not None and upstream_latency is not None:
+        # Stacked bar segments for "Low Latency"
+        ax1.bar(xvals[0], base_delay, color=base_color, alpha=0.8, label="RAN Base Delay")
+        ax1.bar(xvals[0], rlc_delay, bottom=base_delay, color=rlc_color, alpha=0.8, label="RLC Buffer Delay")
+        ax1.bar(xvals[0], upstream_latency, bottom=(base_delay + rlc_delay),
+                color=upstream_color, alpha=0.8, label="Upstream Queue Delay")
+        # Add error bar across the entire stacked bar
+        ax1.errorbar(xvals[0], means1[0], yerr=stds1[0], color='black', capsize=5)
+        # Add legend if requested
+        if include_legend:
+            ax1.legend(
+                # bbox_to_anchor=(0.25, 1.05, 0.35, 0.2),  # narrower width (0.35) vs. the old 0.50
+                fontsize=8,          # smaller font
+                labelspacing=0.2,    # reduce vertical space between labels
+                handlelength=1.0,    # shorter handle
+                handletextpad=0.4,   # reduce spacing between handle and text
+                columnspacing=0.8,   # reduce spacing between columns (if ncol>1)
+                ncol=1               # single column of legend items
+            )
+    else:
+        # Fallback: single bar if multi-run data not available
+        ax1.bar(xvals[0], means1[0], yerr=stds1[0], color="mediumseagreen",
+                capsize=5, alpha=0.8)
+
+    # Plot the "Non-low Latency" bar (x=1)
+    ax1.bar(xvals[1], means1[1], yerr=stds1[1], color="mediumseagreen",
+            capsize=5, alpha=0.8)
+
     ax1.set_xticks(xvals)
     ax1.set_xticklabels(labels1, rotation=0)
     ax1.set_ylabel("Mean SRTT (ms)")
-    ax1.set_title("UE-Level Mean ± StdDev SRTT (Across All Indices)")
-
-    plt.tight_layout()
+    plt.tight_layout(pad=0.5)  # Reduce extra padding
     outname1 = f"{prefix}_srtt_ue_plot.pdf"
+    
+    if bottom_text.strip():
+        plt.subplots_adjust(bottom=0.14)
+        fig1.text(0.5, 0.02, bottom_text, ha='center', va='center')
+        
     plt.savefig(outname1)
     print(f"Saved Plot #1 to {outname1}")
     plt.close(fig1)
+    
+    print("prague rtt:", results1[0][1])
+    print("cubic average rtt:", results1[1][1])
 
     # ---------------------------------------------------------------------
-    # Plot #2: Per-flow => skip aggregator rows (flow="ALL_FLOWS") and skip file="ALL_CUBIC"
-    # We gather for each (ue_type, flow), across all idx, a list of srtt. Then compute mean & std.
-    # Then produce a bar for each combination, e.g. prague-s5, prague-s7, cubic1-s5, ...
+    # Plot #2: Per-flow => skip aggregator rows (flow="ALL_FLOWS") and skip file="ALL_CUBIC".
+    # Then bar chart for each (ue_type, flow_id).
     # ---------------------------------------------------------------------
     flow_map = {}  # key=(ue_type, flow_num), val=list_of_srtt
     for (idxv, filev, uet, flowv, srttv) in data:
@@ -145,20 +197,15 @@ def main(prefix):
             continue
         if filev == "ALL_CUBIC":
             continue
-        # This is a real flow
-        # We'll define a key=(ue_type, flowv)
         flow_map.setdefault((uet, flowv), []).append(srttv)
 
-    # Now we compute mean & std for each key
     flow_summaries = []
     for key, srtt_list in flow_map.items():
         ue_t, flow_id = key
         mu, sd, n = mean_std(srtt_list)
         flow_summaries.append((ue_t, flow_id, mu, sd))
 
-    # We'll define an ordering for the ue_type so it appears prague, then cubic1,2,3
     def ue_type_order(uet):
-        # if unknown, place it last
         order_map = {
             "prague": 1,
             "cubic1": 2,
@@ -168,26 +215,24 @@ def main(prefix):
         return order_map.get(uet, 99)
 
     def flow_id_order(fid):
-        # try to parse as int
         try:
             return int(fid)
         except ValueError:
             return 9999
 
+    # Sort so prague flows come first, then cubic1,2,3
     flow_summaries.sort(key=lambda x: (ue_type_order(x[0]), flow_id_order(x[1])))
 
-    # Build data for bar chart
     labels2 = []
     means2 = []
     stds2 = []
     for (uet, fid, mu, sd) in flow_summaries:
-        # We'll label e.g. "prague-s5" or "cubic1-s7"
         lbl = f"{uet}-{fid}"
         labels2.append(lbl)
         means2.append(mu)
         stds2.append(sd)
 
-    fig2, ax2 = plt.subplots(figsize=(10,4))
+    fig2, ax2 = plt.subplots(figsize=(6, 3))  # Smaller figure
     xvals2 = range(len(labels2))
     ax2.bar(
         xvals2, means2, yerr=stds2,
@@ -198,8 +243,7 @@ def main(prefix):
     ax2.set_xticklabels(labels2, rotation=45, ha="right")
     ax2.set_ylabel("Mean SRTT (ms)")
     ax2.set_title("Per-Flow Mean ± StdDev SRTT (Across All Indices)")
-
-    plt.tight_layout()
+    plt.tight_layout(pad=0.5)
     outname2 = f"{prefix}_srtt_flow_plot.pdf"
     plt.savefig(outname2)
     print(f"Saved Plot #2 to {outname2}")
@@ -207,9 +251,17 @@ def main(prefix):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <prefix>")
+    # We expect 1 or 2 extra args: prefix, and optionally "--no-legend"
+    if len(sys.argv) < 2 or len(sys.argv) > 4:
+        print(f"Usage: {sys.argv[0]} <prefix> [--no-legend]")
         sys.exit(1)
 
     prefix_arg = sys.argv[1]
-    main(prefix_arg)
+    include_legend_arg = True
+    
+    bottom_text = sys.argv[2] if len(sys.argv) >= 3 else ""
+
+    if len(sys.argv) == 4 and sys.argv[3] == "--no-legend":
+        include_legend_arg = False
+
+    main(prefix_arg, bottom_text,  include_legend=include_legend_arg)

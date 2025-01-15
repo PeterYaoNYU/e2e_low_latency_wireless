@@ -9,40 +9,56 @@ def parse_srtt_from_log(log_file):
     """
     Parse a single ss-style log file to find srtt samples.
     Exclude fd=4 (control flow).
+    Skip entries from the first 60 seconds of the log.
     
     Returns:
       flow_srtt_map: dict of { fd_number (int) : [list_of_srtt_floats] }
     """
     flow_srtt_map = {}
-    # We'll keep track of the last fd encountered. If it's one of {5,7,9,11,...}
-    # then the next line might contain 'rtt:' data we want.
     last_fd = None
 
-    # Regex to find e.g. 'fd=5' in the line
+    # Regex patterns
     fd_pattern = re.compile(r'fd=(\d+)')
-    # Regex to find e.g. rtt:110.093
     srtt_pattern = re.compile(r'rtt:(\d+\.\d+)')
+
+    first_timestamp = None
 
     with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
         for line in f:
+            # Extract timestamp from beginning of line
+            parts = line.split(maxsplit=1)
+            if not parts:
+                continue
+            try:
+                current_ts = float(parts[0])
+            except ValueError:
+                continue
+
+            # Initialize first_timestamp on the first valid timestamp
+            if first_timestamp is None:
+                first_timestamp = current_ts
+
+            # Skip processing until 60 seconds have elapsed
+            if (current_ts - first_timestamp) < 60:
+                continue
+
             line_stripped = line.strip()
-            # Check if line has something like 'fd=7'
+
+            # Check for fd= pattern to update last_fd
             match_fd = fd_pattern.search(line_stripped)
             if match_fd:
                 fd_val = int(match_fd.group(1))
-                # We'll store it if it's not 4
                 if fd_val != 4:
                     last_fd = fd_val
                 else:
-                    last_fd = None  # ignore fd=4
+                    last_fd = None
             else:
-                # If the last line had fd=5/7/9/11... then this line might have 'rtt:'
+                # If last_fd is set and we're past 60 seconds, check for rtt
                 if last_fd is not None:
                     match_srtt = srtt_pattern.search(line_stripped)
                     if match_srtt:
                         srtt_val = float(match_srtt.group(1))
                         flow_srtt_map.setdefault(last_fd, []).append(srtt_val)
-                    # after reading potential srtt, reset
                     last_fd = None
 
     return flow_srtt_map
