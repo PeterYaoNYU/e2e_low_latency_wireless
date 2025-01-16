@@ -42,6 +42,11 @@ sudo ip route add 10.0.8.0/24 via 10.0.5.2
 ```
 
 ### SRv6 Case.
+<!-- 96040 and 5129. on decap we need the ECN marking to be copied from outer to inner packet headers, as specified ibn  -->
+For the experimentation, we use static routing for the setup. Here we provide a guideline to use SRv6 in the experiments. Packets are encapsulated upon ingress in SRv6 h
+
+
+
 Also on prague sender node, to use separate queue case:
 ```bash
 sudo ip route del 12.1.1.128/25 encap seg6 mode encap segs 2001:db8:5::2 dev eno2
